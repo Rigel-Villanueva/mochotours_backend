@@ -3,7 +3,6 @@
 const { Router } = require('express');
 const multer     = require('multer');
 
-const authMiddleware       = require('../middlewares/authMiddleware');
 const validate             = require('../middlewares/validate');
 const paginate             = require('../middlewares/paginate');
 const { subirMediaSchema } = require('../dtos/galeriaSchemas');
@@ -13,7 +12,7 @@ const upload = multer({
   limits:  { fileSize: 100 * 1024 * 1024 },
 });
 
-module.exports = (controller) => {
+module.exports = (controller, authMiddleware) => {
   const router = Router();
 
   router.get('/',    paginate, controller.listar);

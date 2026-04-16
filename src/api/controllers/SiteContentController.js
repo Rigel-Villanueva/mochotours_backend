@@ -1,45 +1,70 @@
 'use strict';
 
 class SiteContentController {
-  constructor({ fileStorage }) {
-    this.fileStorage = fileStorage;
-    this.subirSiteContent = this.subirSiteContent.bind(this);
+  constructor({ upsertSiteContentUseCase, getSiteContentUseCase, deleteSiteContentUseCase }) {
+    this.upsertSiteContentUseCase = upsertSiteContentUseCase;
+    this.getSiteContentUseCase = getSiteContentUseCase;
+    this.deleteSiteContentUseCase = deleteSiteContentUseCase;
+
+    this.upsert = this.upsert.bind(this);
+    this.getAll = this.getAll.bind(this);
+    this.delete = this.delete.bind(this);
   }
 
   /**
    * POST /api/site-content
    * Body (form-data):
-   *   file    → archivo (imagen)
-   *   carpeta → 'hero' | 'logos' | 'footer'  (opcional, default: 'general')
+   *   seccion     (requerido)
+   *   titulo      (opcional)
+   *   descripcion (opcional)
+   *   file        (opcional, imagen a subir)
    */
-  async subirSiteContent(req, res, next) {
+  async upsert(req, res, next) {
     try {
-      if (!req.file) {
-        return res.status(400).json({ success: false, error: 'Archivo requerido' });
-      }
+      const { seccion, titulo, descripcion } = req.body;
+      const file = req.file;
 
-      const carpeta   = req.body.carpeta || 'general';
-      const extension = req.file.mimetype.split('/')[1];
-      const filename  = `${Date.now()}.${extension}`;
-      const path      = `${carpeta}/${filename}`;
-
-      await this.fileStorage.upload({
-        bucket:   'site-content',
-        path,
-        buffer:   req.file.buffer,
-        mimeType: req.file.mimetype,
+      const result = await this.upsertSiteContentUseCase.execute({
+        seccion,
+        titulo,
+        descripcion,
+        file
       });
 
-      const publicUrl = `${process.env.SUPABASE_URL}/storage/v1/object/public/site-content/${path}`;
-
-      return res.status(201).json({
+      return res.status(200).json({
         success: true,
-        data: {
-          path,
-          urlMedia: publicUrl,
-          mimeType: req.file.mimetype,
-          sizeBytes: req.file.size,
-        },
+        data: result
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * GET /api/site-content
+   */
+  async getAll(req, res, next) {
+    try {
+      const data = await this.getSiteContentUseCase.execute();
+      return res.status(200).json({
+        success: true,
+        data
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * DELETE /api/site-content/:seccion
+   */
+  async delete(req, res, next) {
+    try {
+      const { seccion } = req.params;
+      await this.deleteSiteContentUseCase.execute(seccion);
+      return res.status(200).json({
+        success: true,
+        message: 'Contenido eliminado correctamente'
       });
     } catch (err) {
       next(err);

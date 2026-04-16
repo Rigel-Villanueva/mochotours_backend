@@ -6,6 +6,7 @@ const cors    = require('cors');
 
 // ── Infraestructura (adaptadores secundarios) ─────────────────────────
 const SupabaseGaleriaRepository = require('./infrastructure/repositories/SupabaseGaleriaRepository');
+const SupabaseSiteContentRepository = require('./infrastructure/repositories/SupabaseSiteContentRepository');
 const SupabaseFileStorage       = require('./infrastructure/services/SupabaseFileStorage');
 const SupabaseAuthService       = require('./infrastructure/services/SupabaseAuthService');
 
@@ -14,6 +15,10 @@ const SubirMediaUseCase    = require('./application/use-cases/galeria/SubirMedia
 const ListarGaleriaUseCase = require('./application/use-cases/galeria/ListarGaleriaUseCase');
 const EliminarMediaUseCase = require('./application/use-cases/galeria/EliminarMediaUseCase');
 const LoginUseCase         = require('./application/use-cases/auth/LoginUseCase');
+
+const UpsertSiteContentUseCase = require('./application/use-cases/site-content/UpsertSiteContentUseCase');
+const GetSiteContentUseCase    = require('./application/use-cases/site-content/GetSiteContentUseCase');
+const DeleteSiteContentUseCase = require('./application/use-cases/site-content/DeleteSiteContentUseCase');
 
 // ── Controllers ───────────────────────────────────────────────────────
 const GaleriaController = require('./api/controllers/GaleriaController');
@@ -27,8 +32,9 @@ const SiteContentController  = require('./api/controllers/SiteContentController'
 const makeSiteContentRoutes  = require('./api/routes/siteContentRoutes');
 
 // ── Middlewares globales ──────────────────────────────────────────────
-const requestLogger  = require('./api/middlewares/requestLogger');
+const requestLogger   = require('./api/middlewares/requestLogger');
 const errorMiddleware = require('./api/middlewares/errorMiddleware');
+const makeAuthMiddleware = require('./api/middlewares/authMiddleware');
 
 // =====================================================================
 // createApp — Punto de composición (Dependency Injection manual)
@@ -47,15 +53,20 @@ function createApp() {
   app.use(requestLogger);
 
   // ── Adaptadores secundarios ────────────────────────────────────────
-  const galeriaRepo  = new SupabaseGaleriaRepository();
-  const fileStorage  = new SupabaseFileStorage();
-  const authService  = new SupabaseAuthService();
+  const galeriaRepo      = new SupabaseGaleriaRepository();
+  const siteContentRepo  = new SupabaseSiteContentRepository();
+  const fileStorage      = new SupabaseFileStorage();
+  const authService      = new SupabaseAuthService();
 
   // ── Casos de uso ───────────────────────────────────────────────────
   const subirMedia    = new SubirMediaUseCase({ galeriaRepository: galeriaRepo, fileStorage });
   const listarGaleria = new ListarGaleriaUseCase({ galeriaRepository: galeriaRepo });
   const eliminarMedia = new EliminarMediaUseCase({ galeriaRepository: galeriaRepo, fileStorage });
   const login         = new LoginUseCase({ authService });
+  
+  const upsertSiteContent = new UpsertSiteContentUseCase({ siteContentRepository: siteContentRepo, fileStorage });
+  const getSiteContent    = new GetSiteContentUseCase({ siteContentRepository: siteContentRepo });
+  const deleteSiteContent = new DeleteSiteContentUseCase({ siteContentRepository: siteContentRepo });
 
   // ── Controllers ────────────────────────────────────────────────────
   const galeriaController = new GaleriaController({
@@ -65,12 +76,20 @@ function createApp() {
   });
 
   const authController = new AuthController({ loginUseCase: login });
-  const siteContentController = new SiteContentController({ fileStorage });
+  
+  const siteContentController = new SiteContentController({ 
+    upsertSiteContentUseCase: upsertSiteContent,
+    getSiteContentUseCase: getSiteContent,
+    deleteSiteContentUseCase: deleteSiteContent
+  });
+
+  // ── Middlewares dinámicos (Inyectados) ─────────────────────────────
+  const authMiddleware = makeAuthMiddleware(authService);
 
   // ── Rutas ──────────────────────────────────────────────────────────
-  app.use('/api/galeria', makeGaleriaRoutes(galeriaController));
+  app.use('/api/galeria', makeGaleriaRoutes(galeriaController, authMiddleware));
   app.use('/api/auth',    makeAuthRoutes(authController));
-  app.use('/api/site-content', makeSiteContentRoutes(siteContentController));
+  app.use('/api/site-content', makeSiteContentRoutes(siteContentController, authMiddleware));
 
   // Ruta de salud — útil para monitoreo y Docker healthcheck
   app.get('/health', (_req, res) => res.json({ status: 'ok', project: 'mochotours-api' }));
