@@ -7,6 +7,7 @@ const cors    = require('cors');
 // ── Infraestructura (adaptadores secundarios) ─────────────────────────
 const SupabaseGaleriaRepository = require('./infrastructure/repositories/SupabaseGaleriaRepository');
 const SupabaseSiteContentRepository = require('./infrastructure/repositories/SupabaseSiteContentRepository');
+const SupabaseContactInfoRepository = require('./infrastructure/repositories/SupabaseContactInfoRepository');
 const SupabaseFileStorage       = require('./infrastructure/services/SupabaseFileStorage');
 const SupabaseAuthService       = require('./infrastructure/services/SupabaseAuthService');
 
@@ -20,9 +21,13 @@ const UpsertSiteContentUseCase = require('./application/use-cases/site-content/U
 const GetSiteContentUseCase    = require('./application/use-cases/site-content/GetSiteContentUseCase');
 const DeleteSiteContentUseCase = require('./application/use-cases/site-content/DeleteSiteContentUseCase');
 
+const UpsertContactInfoUseCase = require('./application/use-cases/contact-info/UpsertContactInfoUseCase');
+const GetContactInfoUseCase    = require('./application/use-cases/contact-info/GetContactInfoUseCase');
+
 // ── Controllers ───────────────────────────────────────────────────────
 const GaleriaController = require('./api/controllers/GaleriaController');
 const AuthController    = require('./api/controllers/AuthController');
+const ContactInfoController = require('./api/controllers/ContactInfoController');
 
 // ── Rutas ─────────────────────────────────────────────────────────────
 const makeGaleriaRoutes = require('./api/routes/galeriaRoutes');
@@ -30,6 +35,8 @@ const makeAuthRoutes    = require('./api/routes/authRoutes');
 
 const SiteContentController  = require('./api/controllers/SiteContentController');
 const makeSiteContentRoutes  = require('./api/routes/siteContentRoutes');
+
+const makeContactInfoRoutes = require('./api/routes/contactInfoRoutes');
 
 // ── Middlewares globales ──────────────────────────────────────────────
 const requestLogger   = require('./api/middlewares/requestLogger');
@@ -55,6 +62,7 @@ function createApp() {
   // ── Adaptadores secundarios ────────────────────────────────────────
   const galeriaRepo      = new SupabaseGaleriaRepository();
   const siteContentRepo  = new SupabaseSiteContentRepository();
+  const contactInfoRepo  = new SupabaseContactInfoRepository();
   const fileStorage      = new SupabaseFileStorage();
   const authService      = new SupabaseAuthService();
 
@@ -67,6 +75,9 @@ function createApp() {
   const upsertSiteContent = new UpsertSiteContentUseCase({ siteContentRepository: siteContentRepo, fileStorage });
   const getSiteContent    = new GetSiteContentUseCase({ siteContentRepository: siteContentRepo });
   const deleteSiteContent = new DeleteSiteContentUseCase({ siteContentRepository: siteContentRepo });
+
+  const upsertContactInfo = new UpsertContactInfoUseCase({ contactInfoRepository: contactInfoRepo });
+  const getContactInfo    = new GetContactInfoUseCase({ contactInfoRepository: contactInfoRepo });
 
   // ── Controllers ────────────────────────────────────────────────────
   const galeriaController = new GaleriaController({
@@ -83,6 +94,11 @@ function createApp() {
     deleteSiteContentUseCase: deleteSiteContent
   });
 
+  const contactInfoController = new ContactInfoController({
+    upsertContactInfoUseCase: upsertContactInfo,
+    getContactInfoUseCase: getContactInfo
+  });
+
   // ── Middlewares dinámicos (Inyectados) ─────────────────────────────
   const authMiddleware = makeAuthMiddleware(authService);
 
@@ -90,6 +106,7 @@ function createApp() {
   app.use('/api/galeria', makeGaleriaRoutes(galeriaController, authMiddleware));
   app.use('/api/auth',    makeAuthRoutes(authController));
   app.use('/api/site-content', makeSiteContentRoutes(siteContentController, authMiddleware));
+  app.use('/api/contact-info', makeContactInfoRoutes(contactInfoController, authMiddleware));
 
   // Ruta de salud — útil para monitoreo y Docker healthcheck
   app.get('/health', (_req, res) => res.json({ status: 'ok', project: 'mochotours-api' }));

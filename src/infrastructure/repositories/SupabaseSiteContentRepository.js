@@ -1,6 +1,6 @@
 'use strict';
 
-const supabase = require('../config/supabase');
+const { supabaseAdmin } = require('../config/supabase');
 const SiteContent = require('../../domain/entities/SiteContent');
 const SiteContentRepository = require('../../domain/ports/SiteContentRepository');
 
@@ -35,7 +35,7 @@ class SupabaseSiteContentRepository extends SiteContentRepository {
     }
 
     // Se hace upsert buscando por `seccion` en la base de datos (seccion es UNIQUE)
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('contenido_web')
       .upsert(dataToSave, { onConflict: 'seccion' })
       .select()
@@ -49,7 +49,7 @@ class SupabaseSiteContentRepository extends SiteContentRepository {
   }
 
   async getAll() {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('contenido_web')
       .select('*')
       .order('seccion', { ascending: true });
@@ -62,7 +62,7 @@ class SupabaseSiteContentRepository extends SiteContentRepository {
   }
 
   async delete(seccion) {
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from('contenido_web')
       .delete()
       .eq('seccion', seccion);
