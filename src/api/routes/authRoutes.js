@@ -12,5 +12,9 @@ module.exports = (controller) => {
     controller.login
   );
 
+  // Ruta de refresh — NO lleva authMiddleware porque el access_token
+  // ya está expirado cuando el frontend llama aquí.
+  router.post('/refresh', controller.refresh);
+
   return router;
 };

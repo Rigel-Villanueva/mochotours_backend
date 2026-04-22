@@ -10,7 +10,8 @@ class GaleriaItem {
     tipo, width = null, height = null, durationSeg = null,
     titulo = null, descripcion = null, isActive = true,
     uploadedBy, createdAt = null, updatedAt = null, deletedAt = null,
-    urlMedia = null,   // ← agrega esta línea
+    urlMedia = null,
+    albumId = null, altText = null, destacada = false, orden = 0,
   }) {
     if (!storagePath)          throw new Error('storagePath es requerido');
     if (!mimeType)             throw new Error('mimeType es requerido');
@@ -43,6 +44,10 @@ class GaleriaItem {
     this.updatedAt   = updatedAt;
     this.deletedAt   = deletedAt;
     this.urlMedia    = urlMedia;
+    this.albumId     = albumId;
+    this.altText     = altText;
+    this.destacada   = destacada;
+    this.orden       = orden;
   }
 
   desactivar() {

@@ -5,8 +5,8 @@ class ListarGaleriaUseCase {
     this.galeriaRepo = galeriaRepository;
   }
 
-  async execute({ page = 1, limit = 12 }) {
-    return await this.galeriaRepo.findAll({ page, limit });
+  async execute({ page = 1, limit = 12, albumId = null }) {
+    return await this.galeriaRepo.findAll({ page, limit, albumId });
   }
 }
 

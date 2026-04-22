@@ -1,5 +1,7 @@
 'use strict';
 
+const { logActivity } = require('../../infrastructure/services/activityLogger');
+
 class SiteContentController {
   constructor({ upsertSiteContentUseCase, getSiteContentUseCase, deleteSiteContentUseCase }) {
     this.upsertSiteContentUseCase = upsertSiteContentUseCase;
@@ -29,6 +31,15 @@ class SiteContentController {
         titulo,
         descripcion,
         file
+      });
+
+      // Registrar actividad
+      logActivity({
+        userId: req.user.id,
+        actionType: 'update_content',
+        actionDescription: `Actualizaste la sección "${seccion}" del sitio web`,
+        entityType: 'contenido',
+        entityId: result.id || null,
       });
 
       return res.status(200).json({
@@ -62,6 +73,15 @@ class SiteContentController {
     try {
       const { seccion } = req.params;
       await this.deleteSiteContentUseCase.execute(seccion);
+
+      // Registrar actividad
+      logActivity({
+        userId: req.user.id,
+        actionType: 'delete_content',
+        actionDescription: `Eliminaste el contenido de la sección "${seccion}"`,
+        entityType: 'contenido',
+      });
+
       return res.status(200).json({
         success: true,
         message: 'Contenido eliminado correctamente'

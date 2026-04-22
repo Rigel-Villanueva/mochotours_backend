@@ -1,11 +1,11 @@
 'use strict';
 
-const Joi = require('joi');
+const { z } = require('zod');
 
-const upsertSiteContentSchema = Joi.object({
-  seccion: Joi.string().required().max(100),
-  titulo: Joi.string().optional().allow('', null).max(255),
-  descripcion: Joi.string().optional().allow('', null),
+const upsertSiteContentSchema = z.object({
+  seccion: z.string().max(100),
+  titulo: z.string().max(255).optional().or(z.literal('')),
+  descripcion: z.string().optional().or(z.literal('')),
 });
 
 module.exports = {

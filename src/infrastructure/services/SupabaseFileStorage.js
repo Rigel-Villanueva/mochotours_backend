@@ -8,7 +8,7 @@ class SupabaseFileStorage extends FileStorage {
 
   async upload({ bucket, path, buffer, mimeType }) {
     const { error } = await supabaseAdmin.storage
-      .from(bucket).upload(path, buffer, { contentType: mimeType, upsert: false });
+      .from(bucket).upload(path, buffer, { contentType: mimeType, upsert: true });
 
     if (error) { logger.error('upload', { error: error.message }); throw new Error(`Error al subir archivo: ${error.message}`); }
     return { path, publicUrl: this.getPublicUrl(bucket, path) };

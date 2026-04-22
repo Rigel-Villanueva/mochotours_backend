@@ -9,6 +9,9 @@ const subirMediaSchema = z.object({
   width:       z.number().int().positive().optional(),
   height:      z.number().int().positive().optional(),
   durationSeg: z.number().positive().optional(),
+  albumId:     z.string().uuid().optional(),
+  altText:     z.string().max(300).optional(),
+  destacada:   z.union([z.boolean(), z.string()]).optional(),
 });
 
 const loginSchema = z.object({

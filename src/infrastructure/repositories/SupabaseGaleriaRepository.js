@@ -7,17 +7,23 @@ const logger            = require('../logger/logger');
 
 class SupabaseGaleriaRepository extends GaleriaRepository {
 
-  async findAll({ page = 1, limit = 12 }) {
+  async findAll({ page = 1, limit = 12, albumId = null } = {}) {
     const from = (page - 1) * limit;
     const to   = from + limit - 1;
 
-    const { data, error, count } = await supabaseAdmin
+    let query = supabaseAdmin
       .from('galeria')
       .select('*', { count: 'exact' })
       .eq('is_active', true)
       .is('deleted_at', null)
-      .order('created_at', { ascending: false })
-      .range(from, to);
+      .order('orden', { ascending: true }) // Added ordering by orden
+      .order('created_at', { ascending: false });
+
+    if (albumId) {
+      query = query.eq('album_id', albumId);
+    }
+
+    const { data, error, count } = await query.range(from, to);
 
     if (error) { logger.error('findAll', { error: error.message }); throw new Error(error.message); }
 
@@ -53,10 +59,33 @@ class SupabaseGaleriaRepository extends GaleriaRepository {
         descripcion:  item.descripcion,
         is_active:    item.isActive,
         uploaded_by:  item.uploadedBy,
+        album_id:     item.albumId,
+        alt_text:     item.altText,
+        destacada:    item.destacada,
+        orden:        item.orden,
       })
       .select().single();
 
     if (error) { logger.error('save', { error: error.message }); throw new Error(error.message); }
+    return this._toEntity(data);
+  }
+
+  async update(item) {
+    const { data, error } = await supabaseAdmin
+      .from('galeria')
+      .update({
+        titulo:       item.titulo,
+        descripcion:  item.descripcion,
+        is_active:    item.isActive,
+        album_id:     item.albumId,
+        alt_text:     item.altText,
+        destacada:    item.destacada,
+        orden:        item.orden,
+      })
+      .eq('id', item.id)
+      .select().single();
+
+    if (error) { logger.error('update', { error: error.message }); throw new Error(error.message); }
     return this._toEntity(data);
   }
 
@@ -94,7 +123,11 @@ class SupabaseGaleriaRepository extends GaleriaRepository {
       createdAt:   row.created_at,
       updatedAt:   row.updated_at,
       deletedAt:   row.deleted_at,
-      urlMedia:    publicUrl,   // ← URL completa lista para el frontend
+      urlMedia:    publicUrl,
+      albumId:     row.album_id,
+      altText:     row.alt_text,
+      destacada:   row.destacada,
+      orden:       row.orden,
     });
   }
 }

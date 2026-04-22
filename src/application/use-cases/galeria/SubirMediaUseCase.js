@@ -8,7 +8,7 @@ class SubirMediaUseCase {
     this.fileStorage = fileStorage;
   }
 
-  async execute({ buffer, mimeType, sizeBytes, tipo, uploadedBy, titulo, descripcion, width, height, durationSeg }) {
+  async execute({ buffer, mimeType, sizeBytes, tipo, uploadedBy, titulo, descripcion, width, height, durationSeg, albumId, altText, destacada }) {
     // 1. Construir ruta organizada por año/mes
     const now       = new Date();
     const anio      = now.getFullYear();
@@ -25,6 +25,7 @@ class SubirMediaUseCase {
     const item = new GaleriaItem({
       storagePath: path, mimeType, sizeBytes, tipo,
       uploadedBy, titulo, descripcion, width, height, durationSeg,
+      albumId, altText, destacada
     });
 
     // 4. Persistir metadata en BD

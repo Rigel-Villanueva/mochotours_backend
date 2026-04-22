@@ -1,5 +1,7 @@
 'use strict';
 
+const { logActivity } = require('../../infrastructure/services/activityLogger');
+
 class ContactInfoController {
   constructor({ getContactInfoUseCase, upsertContactInfoUseCase }) {
     this.getContactInfoUseCase = getContactInfoUseCase;
@@ -32,6 +34,15 @@ class ContactInfoController {
   async upsert(req, res, next) {
     try {
       const result = await this.upsertContactInfoUseCase.execute(req.body);
+
+      // Registrar actividad
+      logActivity({
+        userId: req.user.id,
+        actionType: 'update_contact',
+        actionDescription: 'Actualizaste la información de contacto y redes sociales',
+        entityType: 'contacto',
+        entityId: result?.id || null,
+      });
 
       return res.status(200).json({
         success: true,

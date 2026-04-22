@@ -23,9 +23,13 @@ function errorMiddleware(err, req, res, next) {
     });
   }
 
+  const isDev = process.env.NODE_ENV !== 'production';
+
   res.status(status).json({
     success: false,
-    error:   status === 500 ? 'Error interno del servidor' : err.message,
+    error:   status === 500
+      ? (isDev ? `[DEV] ${err.message}` : 'Error interno del servidor')
+      : err.message,
   });
 }
 

@@ -6,6 +6,7 @@ const cors    = require('cors');
 
 // ── Infraestructura (adaptadores secundarios) ─────────────────────────
 const SupabaseGaleriaRepository = require('./infrastructure/repositories/SupabaseGaleriaRepository');
+const SupabaseAlbumRepository   = require('./infrastructure/repositories/SupabaseAlbumRepository');
 const SupabaseSiteContentRepository = require('./infrastructure/repositories/SupabaseSiteContentRepository');
 const SupabaseContactInfoRepository = require('./infrastructure/repositories/SupabaseContactInfoRepository');
 const SupabaseFileStorage       = require('./infrastructure/services/SupabaseFileStorage');
@@ -17,6 +18,12 @@ const ListarGaleriaUseCase = require('./application/use-cases/galeria/ListarGale
 const EliminarMediaUseCase = require('./application/use-cases/galeria/EliminarMediaUseCase');
 const LoginUseCase         = require('./application/use-cases/auth/LoginUseCase');
 
+const ListarAlbumesUseCase       = require('./application/use-cases/albumes/ListarAlbumesUseCase');
+const ObtenerAlbumPorSlugUseCase = require('./application/use-cases/albumes/ObtenerAlbumPorSlugUseCase');
+const CrearAlbumUseCase          = require('./application/use-cases/albumes/CrearAlbumUseCase');
+const ActualizarAlbumUseCase     = require('./application/use-cases/albumes/ActualizarAlbumUseCase');
+const EliminarAlbumUseCase       = require('./application/use-cases/albumes/EliminarAlbumUseCase');
+
 const UpsertSiteContentUseCase = require('./application/use-cases/site-content/UpsertSiteContentUseCase');
 const GetSiteContentUseCase    = require('./application/use-cases/site-content/GetSiteContentUseCase');
 const DeleteSiteContentUseCase = require('./application/use-cases/site-content/DeleteSiteContentUseCase');
@@ -26,12 +33,18 @@ const GetContactInfoUseCase    = require('./application/use-cases/contact-info/G
 
 // ── Controllers ───────────────────────────────────────────────────────
 const GaleriaController = require('./api/controllers/GaleriaController');
+const AlbumController   = require('./api/controllers/AlbumController');
 const AuthController    = require('./api/controllers/AuthController');
 const ContactInfoController = require('./api/controllers/ContactInfoController');
+const ProfileController     = require('./api/controllers/ProfileController');
+const ActivityController    = require('./api/controllers/ActivityController');
 
 // ── Rutas ─────────────────────────────────────────────────────────────
 const makeGaleriaRoutes = require('./api/routes/galeriaRoutes');
+const makeAlbumRoutes   = require('./api/routes/albumRoutes');
 const makeAuthRoutes    = require('./api/routes/authRoutes');
+const makeProfileRoutes = require('./api/routes/profileRoutes');
+const makeActivityRoutes = require('./api/routes/activityRoutes');
 
 const SiteContentController  = require('./api/controllers/SiteContentController');
 const makeSiteContentRoutes  = require('./api/routes/siteContentRoutes');
@@ -61,6 +74,7 @@ function createApp() {
 
   // ── Adaptadores secundarios ────────────────────────────────────────
   const galeriaRepo      = new SupabaseGaleriaRepository();
+  const albumRepo        = new SupabaseAlbumRepository();
   const siteContentRepo  = new SupabaseSiteContentRepository();
   const contactInfoRepo  = new SupabaseContactInfoRepository();
   const fileStorage      = new SupabaseFileStorage();
@@ -70,6 +84,13 @@ function createApp() {
   const subirMedia    = new SubirMediaUseCase({ galeriaRepository: galeriaRepo, fileStorage });
   const listarGaleria = new ListarGaleriaUseCase({ galeriaRepository: galeriaRepo });
   const eliminarMedia = new EliminarMediaUseCase({ galeriaRepository: galeriaRepo, fileStorage });
+  
+  const listarAlbumes       = new ListarAlbumesUseCase({ albumRepository: albumRepo });
+  const obtenerAlbumPorSlug = new ObtenerAlbumPorSlugUseCase({ albumRepository: albumRepo });
+  const crearAlbum          = new CrearAlbumUseCase({ albumRepository: albumRepo });
+  const actualizarAlbum     = new ActualizarAlbumUseCase({ albumRepository: albumRepo });
+  const eliminarAlbum       = new EliminarAlbumUseCase({ albumRepository: albumRepo });
+
   const login         = new LoginUseCase({ authService });
   
   const upsertSiteContent = new UpsertSiteContentUseCase({ siteContentRepository: siteContentRepo, fileStorage });
@@ -86,7 +107,16 @@ function createApp() {
     eliminarMediaUseCase: eliminarMedia,
   });
 
-  const authController = new AuthController({ loginUseCase: login });
+  const albumController = new AlbumController({
+    listarAlbumesUseCase:       listarAlbumes,
+    obtenerAlbumPorSlugUseCase: obtenerAlbumPorSlug,
+    crearAlbumUseCase:          crearAlbum,
+    actualizarAlbumUseCase:     actualizarAlbum,
+    eliminarAlbumUseCase:       eliminarAlbum,
+    albumRepository:            albumRepo,
+  });
+
+  const authController = new AuthController({ loginUseCase: login, authService });
   
   const siteContentController = new SiteContentController({ 
     upsertSiteContentUseCase: upsertSiteContent,
@@ -99,14 +129,20 @@ function createApp() {
     getContactInfoUseCase: getContactInfo
   });
 
+  const profileController  = new ProfileController();
+  const activityController = new ActivityController();
+
   // ── Middlewares dinámicos (Inyectados) ─────────────────────────────
   const authMiddleware = makeAuthMiddleware(authService);
 
   // ── Rutas ──────────────────────────────────────────────────────────
   app.use('/api/galeria', makeGaleriaRoutes(galeriaController, authMiddleware));
+  app.use('/api/albumes', makeAlbumRoutes(albumController, authMiddleware));
   app.use('/api/auth',    makeAuthRoutes(authController));
+  app.use('/api/auth',    makeProfileRoutes(profileController, authMiddleware));
   app.use('/api/site-content', makeSiteContentRoutes(siteContentController, authMiddleware));
   app.use('/api/contact-info', makeContactInfoRoutes(contactInfoController, authMiddleware));
+  app.use('/api/admin/activity', makeActivityRoutes(activityController, authMiddleware));
 
   // Ruta de salud — útil para monitoreo y Docker healthcheck
   app.get('/health', (_req, res) => res.json({ status: 'ok', project: 'mochotours-api' }));
