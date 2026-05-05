@@ -72,7 +72,8 @@ function createApp() {
   app.use(helmet({
     crossOriginResourcePolicy: false,
   }));
-  app.use(cors({ origin: process.env.CORS_ORIGIN || '*' }));
+  const corsOrigins = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : '*';
+  app.use(cors({ origin: corsOrigins }));
   app.use(express.json());
   app.use(requestLogger);
 
