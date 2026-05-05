@@ -3,9 +3,10 @@
 const SiteContent = require('../../../domain/entities/SiteContent');
 
 class UpsertSiteContentUseCase {
-  constructor({ siteContentRepository, fileStorage }) {
+  constructor({ siteContentRepository, fileStorage, imageOptimizer }) {
     this.siteContentRepository = siteContentRepository;
-    this.fileStorage = fileStorage; // Para subir imagen a un bucket
+    this.fileStorage = fileStorage;
+    this.imageOptimizer = imageOptimizer;
   }
 
   /**
@@ -21,8 +22,19 @@ class UpsertSiteContentUseCase {
 
     // 1. Si hay archivo, lo subimos
     if (file) {
-      const extension = file.mimetype.split('/')[1] || 'img';
-      const filename  = `${Date.now()}-${Math.floor(Math.random()*1000)}.${extension}`;
+      let finalBuffer = file.buffer;
+      let finalMime = file.mimetype;
+      let finalExt = file.mimetype.split('/')[1] || 'img';
+
+      // Pasamos por el optimizador de imágenes
+      if (this.imageOptimizer && finalMime.startsWith('image/')) {
+        const optimized = await this.imageOptimizer.optimize(file.buffer, file.mimetype);
+        finalBuffer = optimized.buffer;
+        finalMime = optimized.mimeType;
+        finalExt = optimized.extension;
+      }
+
+      const filename  = `${Date.now()}-${Math.floor(Math.random()*1000)}.${finalExt}`;
       const bucket    = 'site-content';
       
       // Clasificar por carpetas segun seccion para ser limpios
@@ -31,11 +43,13 @@ class UpsertSiteContentUseCase {
       await this.fileStorage.upload({
         bucket: bucket,
         path: path,
-        buffer: file.buffer,
-        mimeType: file.mimetype,
+        buffer: finalBuffer,
+        mimeType: finalMime,
       });
 
-      imagenUrl = `${process.env.SUPABASE_URL}/storage/v1/object/public/${bucket}/${path}`;
+      // Usar la URL base local en lugar de Supabase
+      const baseUrl = process.env.UPLOADS_BASE_URL || 'http://localhost:4000';
+      imagenUrl = `${baseUrl}/uploads/${bucket}/${path}`;
     }
 
     // 2. Armamos la entidad con lo que mandaron

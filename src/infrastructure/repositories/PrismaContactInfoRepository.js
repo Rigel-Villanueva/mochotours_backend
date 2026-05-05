@@ -1,10 +1,10 @@
 'use strict';
 
-const { supabaseAdmin } = require('../config/supabase');
+const prisma = require('../config/prisma');
 const ContactInfo = require('../../domain/entities/ContactInfo');
 const ContactInfoRepository = require('../../domain/ports/ContactInfoRepository');
 
-class SupabaseContactInfoRepository extends ContactInfoRepository {
+class PrismaContactInfoRepository extends ContactInfoRepository {
   /**
    * Mapea un registro de bd a entidad de dominio.
    */
@@ -25,18 +25,12 @@ class SupabaseContactInfoRepository extends ContactInfoRepository {
   }
 
   async get() {
-    // Tomamos el primero que exista usando .limit(1) y .single()
-    const { data, error } = await supabaseAdmin
-      .from('contact_info')
-      .select('*')
-      .limit(1)
-      .maybeSingle(); // maybeSingle para no lanzar error si tabla está vacía
-
-    if (error) {
+    try {
+      const data = await prisma.contactInfo.findFirst();
+      return this._mapToEntity(data);
+    } catch (error) {
       throw new Error(`Error al obtener información de contacto: ${error.message}`);
     }
-
-    return this._mapToEntity(data);
   }
 
   async upsert(contactInfo) {
@@ -58,18 +52,23 @@ class SupabaseContactInfoRepository extends ContactInfoRepository {
        dataToSave.id = current.id;
     }
 
-    const { data, error } = await supabaseAdmin
-      .from('contact_info')
-      .upsert(dataToSave)
-      .select()
-      .single();
-
-    if (error) {
+    try {
+      let data;
+      if (current && current.id) {
+        data = await prisma.contactInfo.update({
+          where: { id: current.id },
+          data: dataToSave,
+        });
+      } else {
+        data = await prisma.contactInfo.create({
+          data: dataToSave,
+        });
+      }
+      return this._mapToEntity(data);
+    } catch (error) {
       throw new Error(`Error en upsert Contact Info: ${error.message}`);
     }
-
-    return this._mapToEntity(data);
   }
 }
 
-module.exports = SupabaseContactInfoRepository;
+module.exports = PrismaContactInfoRepository;

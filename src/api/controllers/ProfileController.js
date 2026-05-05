@@ -1,13 +1,13 @@
 'use strict';
 
-const { supabaseAdmin } = require('../../infrastructure/config/supabase');
+const prisma = require('../../infrastructure/config/prisma');
 const logger = require('../../infrastructure/logger/logger');
 
 /**
  * ProfileController — GET / PUT /api/auth/profile
  *
  * Permite al admin obtener y actualizar sus datos de perfil
- * almacenados en la tabla `perfiles` de Supabase.
+ * almacenados en la tabla `perfiles`.
  */
 class ProfileController {
   constructor() {
@@ -18,20 +18,19 @@ class ProfileController {
   /**
    * GET /api/auth/profile
    * Requiere authMiddleware (req.user disponible).
-   * Devuelve primer_nombre, apellido_paterno, apellido_materno, nombre, email, rol.
+   * Devuelve nombre, email, rol.
    */
   async get(req, res, next) {
     try {
       const userId = req.user.id;
 
-      const { data, error } = await supabaseAdmin
-        .from('perfiles')
-        .select('nombre, rol')
-        .eq('id', userId)
-        .single();
+      const data = await prisma.perfil.findUnique({
+        where: { id: userId },
+        select: { nombre: true, rol: true },
+      });
 
-      if (error) {
-        logger.warn('ProfileController.get — error al obtener perfil', { userId, error: error.message });
+      if (!data) {
+        logger.warn('ProfileController.get — perfil no encontrado', { userId });
         return res.status(404).json({
           success: false,
           error: 'Perfil no encontrado',
@@ -64,23 +63,15 @@ class ProfileController {
         });
       }
 
-      const { data, error } = await supabaseAdmin
-        .from('perfiles')
-        .update(updateFields)
-        .eq('id', userId)
-        .select('nombre, rol')
-        .single();
-
-      if (error) {
-        logger.error('ProfileController.update — error al actualizar perfil', { userId, error: error.message });
-        return res.status(500).json({
-          success: false,
-          error: 'Error al actualizar perfil',
-        });
-      }
+      const data = await prisma.perfil.update({
+        where: { id: userId },
+        data: updateFields,
+        select: { nombre: true, rol: true },
+      });
 
       return res.json({ success: true, data });
     } catch (err) {
+      logger.error('ProfileController.update — error al actualizar perfil', { error: err.message });
       next(err);
     }
   }

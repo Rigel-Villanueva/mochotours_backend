@@ -1,0 +1,141 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String               @id @default(uuid()) @db.Char(36)
+  email         String               @unique @db.VarChar(255)
+  password_hash String               @db.VarChar(255)
+  created_at    DateTime?            @default(now()) @db.Timestamp(0)
+  activity_logs AdminActivityLog[]
+  albumes       Album[]
+  galeria       Galeria[]
+  perfil        Perfil?
+
+  @@map("users")
+}
+
+model AdminActivityLog {
+  id                 String    @id @default(uuid()) @db.Char(36)
+  user_id            String?   @db.Char(36)
+  action_type        String    @db.VarChar(255)
+  action_description String    @db.Text
+  entity_type        String?   @db.VarChar(255)
+  entity_id          String?   @db.Char(36)
+  metadata           Json?
+  created_at         DateTime? @default(now()) @db.Timestamp(0)
+  user               User?     @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  @@index([user_id], map: "user_id")
+  @@map("admin_activity_log")
+}
+
+model Album {
+  id                 String    @id @default(uuid()) @db.Char(36)
+  titulo             String    @db.VarChar(255)
+  slug               String    @unique @db.VarChar(255)
+  descripcion        String?   @db.Text
+  cover_storage_path String?   @db.Text
+  cover_bucket       String?   @default("media-gallery") @db.VarChar(255)
+  is_active          Boolean   @default(true)
+  destacado          Boolean   @default(false)
+  orden              Int       @default(0)
+  meta_title         String?   @db.VarChar(255)
+  meta_description   String?   @db.Text
+  created_by         String    @db.Char(36)
+  created_at         DateTime  @default(now()) @db.Timestamp(0)
+  updated_at         DateTime  @default(now()) @db.Timestamp(0)
+  deleted_at         DateTime? @db.Timestamp(0)
+  user               User      @relation(fields: [created_by], references: [id])
+  galeria            Galeria[]
+
+  @@index([created_by], map: "created_by")
+  @@map("albumes")
+}
+
+model ContactInfo {
+  id              String   @id @default(uuid()) @db.Char(36)
+  phone_primary   String?  @db.VarChar(50)
+  phone_secondary String?  @db.VarChar(50)
+  email           String?  @db.VarChar(255)
+  google_maps_url String?  @db.Text
+  instagram_url   String?  @db.Text
+  facebook_url    String?  @db.Text
+  tiktok_url      String?  @db.Text
+  created_at      DateTime @default(now()) @db.Timestamp(0)
+  updated_at      DateTime @default(now()) @db.Timestamp(0)
+
+  @@map("contact_info")
+}
+
+model ContenidoWeb {
+  id          String   @id @default(uuid()) @db.Char(36)
+  seccion     String   @unique @db.VarChar(255)
+  titulo      String?  @db.VarChar(255)
+  descripcion String?  @db.Text
+  imagen_url  String?  @db.Text
+  created_at  DateTime @default(now()) @db.Timestamp(0)
+  updated_at  DateTime @default(now()) @db.Timestamp(0)
+
+  @@map("contenido_web")
+}
+
+enum TipoMedia {
+  imagen
+  video
+}
+
+model Galeria {
+  id           String    @id @default(uuid()) @db.Char(36)
+  storage_path String    @db.Text
+  bucket       String    @default("media-gallery") @db.VarChar(255)
+  mime_type    String    @db.VarChar(100)
+  size_bytes   BigInt
+  tipo         TipoMedia
+  width        Int?
+  height       Int?
+  duration_seg Decimal?  @db.Decimal(10, 2)
+  titulo       String?   @db.VarChar(255)
+  descripcion  String?   @db.Text
+  is_active    Boolean   @default(true)
+  uploaded_by  String    @db.Char(36)
+  created_at   DateTime  @default(now()) @db.Timestamp(0)
+  updated_at   DateTime  @default(now()) @db.Timestamp(0)
+  deleted_at   DateTime? @db.Timestamp(0)
+  album_id     String?   @db.Char(36)
+  alt_text     String?   @db.Text
+  destacada    Boolean   @default(false)
+  orden        Int       @default(0)
+  album        Album?    @relation(fields: [album_id], references: [id], onDelete: SetNull)
+  user         User      @relation(fields: [uploaded_by], references: [id])
+
+  @@index([album_id], map: "album_id")
+  @@index([uploaded_by], map: "uploaded_by")
+  @@map("galeria")
+}
+
+enum RolPerfil {
+  admin
+}
+
+model Perfil {
+  id         String    @id @db.Char(36)
+  nombre     String?   @db.VarChar(255)
+  avatar_url String?   @db.Text
+  rol        RolPerfil @default(admin)
+  created_at DateTime  @default(now()) @db.Timestamp(0)
+  updated_at DateTime  @default(now()) @db.Timestamp(0)
+  user       User      @relation(fields: [id], references: [id], onDelete: Cascade)
+
+  @@map("perfiles")
+}

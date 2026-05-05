@@ -1,6 +1,6 @@
 'use strict';
 
-const { supabaseAdmin } = require('../config/supabase');
+const prisma = require('../config/prisma');
 const logger = require('../logger/logger');
 
 /**
@@ -19,16 +19,16 @@ const logger = require('../logger/logger');
  */
 async function logActivity({ userId, actionType, actionDescription, entityType, entityId, metadata }) {
   try {
-    await supabaseAdmin
-      .from('admin_activity_log')
-      .insert({
+    await prisma.adminActivityLog.create({
+      data: {
         user_id: userId,
         action_type: actionType,
         action_description: actionDescription,
         entity_type: entityType || null,
         entity_id: entityId || null,
         metadata: metadata || null,
-      });
+      },
+    });
   } catch (err) {
     // Fire-and-forget: loggear pero no lanzar
     logger.warn('logActivity — No se pudo registrar actividad', {

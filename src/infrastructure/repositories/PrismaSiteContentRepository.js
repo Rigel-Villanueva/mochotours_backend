@@ -1,10 +1,10 @@
 'use strict';
 
-const { supabaseAdmin } = require('../config/supabase');
+const prisma = require('../config/prisma');
 const SiteContent = require('../../domain/entities/SiteContent');
 const SiteContentRepository = require('../../domain/ports/SiteContentRepository');
 
-class SupabaseSiteContentRepository extends SiteContentRepository {
+class PrismaSiteContentRepository extends SiteContentRepository {
   /**
    * Mapea un registro de db a entidad de dominio.
    */
@@ -35,42 +35,39 @@ class SupabaseSiteContentRepository extends SiteContentRepository {
     }
 
     // Se hace upsert buscando por `seccion` en la base de datos (seccion es UNIQUE)
-    const { data, error } = await supabaseAdmin
-      .from('contenido_web')
-      .upsert(dataToSave, { onConflict: 'seccion' })
-      .select()
-      .single();
+    try {
+      const data = await prisma.contenidoWeb.upsert({
+        where: { seccion: siteContent.seccion },
+        update: dataToSave,
+        create: dataToSave,
+      });
 
-    if (error) {
-      throw new Error(`Error en Supabase upsert: ${error.message}`);
+      return this._mapToEntity(data);
+    } catch (error) {
+      throw new Error(`Error en Prisma upsert: ${error.message}`);
     }
-
-    return this._mapToEntity(data);
   }
 
   async getAll() {
-    const { data, error } = await supabaseAdmin
-      .from('contenido_web')
-      .select('*')
-      .order('seccion', { ascending: true });
-
-    if (error) {
+    try {
+      const data = await prisma.contenidoWeb.findMany({
+        orderBy: { seccion: 'asc' },
+      });
+      return data.map(this._mapToEntity.bind(this));
+    } catch (error) {
       throw new Error(`Error al listar contenido web: ${error.message}`);
     }
-
-    return data.map(this._mapToEntity);
   }
 
   async delete(seccion) {
-    const { error } = await supabaseAdmin
-      .from('contenido_web')
-      .delete()
-      .eq('seccion', seccion);
-
-    if (error) {
+    try {
+      await prisma.contenidoWeb.delete({
+        where: { seccion },
+      });
+    } catch (error) {
       throw new Error(`Error al eliminar contenido web: ${error.message}`);
     }
   }
 }
 
-module.exports = SupabaseSiteContentRepository;
+module.exports = PrismaSiteContentRepository;

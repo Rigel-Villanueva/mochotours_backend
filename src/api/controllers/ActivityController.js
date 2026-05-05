@@ -1,6 +1,6 @@
 'use strict';
 
-const { supabaseAdmin } = require('../../infrastructure/config/supabase');
+const prisma = require('../../infrastructure/config/prisma');
 const logger = require('../../infrastructure/logger/logger');
 
 /**
@@ -24,22 +24,26 @@ class ActivityController {
       const userId = req.user.id;
       const limit  = Math.min(parseInt(req.query.limit) || 10, 50);
 
-      const { data, error } = await supabaseAdmin
-        .from('admin_activity_log')
-        .select('id, action_type, action_description, entity_type, entity_id, metadata, created_at')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(limit);
-
-      if (error) {
-        logger.warn('ActivityController.list — error', { error: error.message });
-        // Si la tabla no existe aún, devolver array vacío en vez de error
-        return res.json({ success: true, data: [] });
-      }
+      const data = await prisma.adminActivityLog.findMany({
+        where: { user_id: userId },
+        select: {
+          id: true,
+          action_type: true,
+          action_description: true,
+          entity_type: true,
+          entity_id: true,
+          metadata: true,
+          created_at: true,
+        },
+        orderBy: { created_at: 'desc' },
+        take: limit,
+      });
 
       return res.json({ success: true, data: data || [] });
     } catch (err) {
-      next(err);
+      // Si la tabla no existe aún, devolver array vacío en vez de error
+      logger.warn('ActivityController.list — error', { error: err.message });
+      return res.json({ success: true, data: [] });
     }
   }
 
@@ -60,30 +64,24 @@ class ActivityController {
         });
       }
 
-      const { data, error } = await supabaseAdmin
-        .from('admin_activity_log')
-        .insert({
+      const data = await prisma.adminActivityLog.create({
+        data: {
           user_id: userId,
           action_type,
           action_description,
           entity_type: entity_type || null,
           entity_id: entity_id || null,
           metadata: metadata || null,
-        })
-        .select()
-        .single();
-
-      if (error) {
-        logger.error('ActivityController.create — error', { error: error.message });
-        return res.status(500).json({
-          success: false,
-          error: 'Error al registrar actividad',
-        });
-      }
+        },
+      });
 
       return res.status(201).json({ success: true, data });
     } catch (err) {
-      next(err);
+      logger.error('ActivityController.create — error', { error: err.message });
+      return res.status(500).json({
+        success: false,
+        error: 'Error al registrar actividad',
+      });
     }
   }
 }

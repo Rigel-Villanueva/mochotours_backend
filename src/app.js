@@ -3,14 +3,16 @@
 const express = require('express');
 const helmet  = require('helmet');
 const cors    = require('cors');
+const path    = require('path');
 
 // ── Infraestructura (adaptadores secundarios) ─────────────────────────
-const SupabaseGaleriaRepository = require('./infrastructure/repositories/SupabaseGaleriaRepository');
-const SupabaseAlbumRepository   = require('./infrastructure/repositories/SupabaseAlbumRepository');
-const SupabaseSiteContentRepository = require('./infrastructure/repositories/SupabaseSiteContentRepository');
-const SupabaseContactInfoRepository = require('./infrastructure/repositories/SupabaseContactInfoRepository');
-const SupabaseFileStorage       = require('./infrastructure/services/SupabaseFileStorage');
-const SupabaseAuthService       = require('./infrastructure/services/SupabaseAuthService');
+const PrismaGaleriaRepository     = require('./infrastructure/repositories/PrismaGaleriaRepository');
+const PrismaAlbumRepository       = require('./infrastructure/repositories/PrismaAlbumRepository');
+const PrismaSiteContentRepository = require('./infrastructure/repositories/PrismaSiteContentRepository');
+const PrismaContactInfoRepository = require('./infrastructure/repositories/PrismaContactInfoRepository');
+const LocalFileStorage            = require('./infrastructure/services/LocalFileStorage');
+const JwtAuthService              = require('./infrastructure/services/JwtAuthService');
+const ImageOptimizer              = require('./infrastructure/services/ImageOptimizer');
 
 // ── Casos de uso ──────────────────────────────────────────────────────
 const SubirMediaUseCase    = require('./application/use-cases/galeria/SubirMediaUseCase');
@@ -67,21 +69,27 @@ function createApp() {
   const app = express();
 
   // ── Middlewares globales ───────────────────────────────────────────
-  app.use(helmet());
+  app.use(helmet({
+    crossOriginResourcePolicy: false,
+  }));
   app.use(cors({ origin: process.env.CORS_ORIGIN || '*' }));
   app.use(express.json());
   app.use(requestLogger);
 
+  // ── Servir archivos estáticos (uploads) ────────────────────────────
+  app.use('/uploads', express.static(path.join(__dirname, '..', 'public', 'uploads')));
+
   // ── Adaptadores secundarios ────────────────────────────────────────
-  const galeriaRepo      = new SupabaseGaleriaRepository();
-  const albumRepo        = new SupabaseAlbumRepository();
-  const siteContentRepo  = new SupabaseSiteContentRepository();
-  const contactInfoRepo  = new SupabaseContactInfoRepository();
-  const fileStorage      = new SupabaseFileStorage();
-  const authService      = new SupabaseAuthService();
+  const galeriaRepo      = new PrismaGaleriaRepository();
+  const albumRepo        = new PrismaAlbumRepository();
+  const siteContentRepo  = new PrismaSiteContentRepository();
+  const contactInfoRepo  = new PrismaContactInfoRepository();
+  const fileStorage      = new LocalFileStorage();
+  const authService      = new JwtAuthService();
+  const imageOptimizer   = new ImageOptimizer();
 
   // ── Casos de uso ───────────────────────────────────────────────────
-  const subirMedia    = new SubirMediaUseCase({ galeriaRepository: galeriaRepo, fileStorage });
+  const subirMedia    = new SubirMediaUseCase({ galeriaRepository: galeriaRepo, fileStorage, imageOptimizer });
   const listarGaleria = new ListarGaleriaUseCase({ galeriaRepository: galeriaRepo });
   const eliminarMedia = new EliminarMediaUseCase({ galeriaRepository: galeriaRepo, fileStorage });
   
@@ -93,7 +101,7 @@ function createApp() {
 
   const login         = new LoginUseCase({ authService });
   
-  const upsertSiteContent = new UpsertSiteContentUseCase({ siteContentRepository: siteContentRepo, fileStorage });
+  const upsertSiteContent = new UpsertSiteContentUseCase({ siteContentRepository: siteContentRepo, fileStorage, imageOptimizer });
   const getSiteContent    = new GetSiteContentUseCase({ siteContentRepository: siteContentRepo });
   const deleteSiteContent = new DeleteSiteContentUseCase({ siteContentRepository: siteContentRepo });
 
