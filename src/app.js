@@ -112,7 +112,7 @@ function createApp() {
         },
       ],
     },
-    apis: ['./src/api/routes/*.js'],
+    apis: ['./src/app.js', './src/api/routes/*.js'],
   };
   const swaggerSpec = swaggerJsdoc(swaggerOptions);
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
@@ -191,9 +191,31 @@ function createApp() {
   app.use('/api/admin/activity', makeActivityRoutes(activityController, authMiddleware));
 
   // Ruta de salud — útil para monitoreo y Docker healthcheck
+  /**
+   * @swagger
+   * /health:
+   *   get:
+   *     summary: Verifica el estado del servidor
+   *     tags: [Health]
+   *     responses:
+   *       200:
+   *         description: Servidor funcionando
+   */
   app.get('/health', (_req, res) => res.json({ status: 'ok', project: 'mochotours-api' }));
 
   // Ruta para probar la conexión a BD y ver el error exacto
+  /**
+   * @swagger
+   * /api/db-test:
+   *   get:
+   *     summary: Prueba de conexión a la base de datos
+   *     tags: [Diagnóstico]
+   *     responses:
+   *       200:
+   *         description: Conexión exitosa
+   *       500:
+   *         description: Fallo de conexión (Muestra el error de Prisma)
+   */
   app.get('/api/db-test', async (_req, res) => {
     try {
       await prisma.$connect();
