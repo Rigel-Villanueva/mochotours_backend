@@ -4,6 +4,9 @@ const express = require('express');
 const helmet  = require('helmet');
 const cors    = require('cors');
 const path    = require('path');
+const swaggerUi = require('swagger-ui-express');
+const swaggerJsdoc = require('swagger-jsdoc');
+const prisma = require('./infrastructure/config/prisma');
 
 // ── Infraestructura (adaptadores secundarios) ─────────────────────────
 const PrismaGaleriaRepository     = require('./infrastructure/repositories/PrismaGaleriaRepository');
@@ -80,6 +83,40 @@ function createApp() {
   // ── Servir archivos estáticos (uploads) ────────────────────────────
   app.use('/uploads', express.static(path.join(__dirname, '..', 'public', 'uploads')));
 
+  // ── Swagger ────────────────────────────────────────────────────────
+  const swaggerOptions = {
+    definition: {
+      openapi: '3.0.0',
+      info: {
+        title: 'MochoTours API',
+        version: '1.0.0',
+        description: 'Documentación de la API de MochoTours',
+      },
+      servers: [
+        {
+          url: process.env.UPLOADS_BASE_URL || 'http://localhost:4000',
+        },
+      ],
+      components: {
+        securitySchemes: {
+          bearerAuth: {
+            type: 'http',
+            scheme: 'bearer',
+            bearerFormat: 'JWT',
+          },
+        },
+      },
+      security: [
+        {
+          bearerAuth: [],
+        },
+      ],
+    },
+    apis: ['./src/api/routes/*.js'],
+  };
+  const swaggerSpec = swaggerJsdoc(swaggerOptions);
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
   // ── Adaptadores secundarios ────────────────────────────────────────
   const galeriaRepo      = new PrismaGaleriaRepository();
   const albumRepo        = new PrismaAlbumRepository();
@@ -155,6 +192,23 @@ function createApp() {
 
   // Ruta de salud — útil para monitoreo y Docker healthcheck
   app.get('/health', (_req, res) => res.json({ status: 'ok', project: 'mochotours-api' }));
+
+  // Ruta para probar la conexión a BD y ver el error exacto
+  app.get('/api/db-test', async (_req, res) => {
+    try {
+      await prisma.$connect();
+      res.json({ status: 'ok', message: 'Conexión a la base de datos exitosa' });
+    } catch (error) {
+      res.status(500).json({ 
+        status: 'error', 
+        message: 'Fallo al conectar a la base de datos',
+        errorName: error.name,
+        errorMessage: error.message,
+        errorCode: error.code,
+        meta: error.meta
+      });
+    }
+  });
 
   // ── Manejador de errores (SIEMPRE AL FINAL) ────────────────────────
   app.use(errorMiddleware);
