@@ -86,7 +86,10 @@ function createApp() {
   app.use(requestLogger);
 
   // ── Servir archivos estáticos (uploads) ────────────────────────────
-  app.use('/uploads', express.static(path.join(__dirname, '..', 'public', 'uploads')));
+  const uploadsDir = process.env.UPLOADS_DIR_PATH 
+    ? path.resolve(process.env.UPLOADS_DIR_PATH)
+    : path.join(__dirname, '..', 'public', 'uploads');
+  app.use('/uploads', express.static(uploadsDir));
 
   // ── Swagger ────────────────────────────────────────────────────────
   const swaggerOptions = {

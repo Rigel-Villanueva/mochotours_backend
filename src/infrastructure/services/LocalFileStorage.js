@@ -6,7 +6,11 @@ const path        = require('path');
 const fs          = require('fs');
 
 // Directorio base donde se guardarán los archivos
-const UPLOADS_DIR = path.join(__dirname, '..', '..', '..', 'public', 'uploads');
+// Si existe UPLOADS_DIR_PATH, usa esa ruta absoluta (útil para que Git no la borre).
+// De lo contrario, cae en la ruta local public/uploads.
+const UPLOADS_DIR = process.env.UPLOADS_DIR_PATH 
+  ? path.resolve(process.env.UPLOADS_DIR_PATH)
+  : path.join(__dirname, '..', '..', '..', 'public', 'uploads');
 
 class LocalFileStorage extends FileStorage {
 
