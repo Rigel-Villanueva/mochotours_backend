@@ -17,7 +17,8 @@ function makeAuthMiddleware(authService) {
       try {
         const user = await authService.verifyTokenAndRole(token);
         
-        if (user.rol !== 'admin') {
+        const ALLOWED_ROLES = ['admin', 'superadmin'];
+        if (!ALLOWED_ROLES.includes(user.rol)) {
           return res.status(403).json({ success: false, error: 'Acceso denegado: Permisos de Administrador requeridos' });
         }
 

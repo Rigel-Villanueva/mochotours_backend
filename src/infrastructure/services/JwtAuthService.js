@@ -18,7 +18,10 @@ class JwtAuthService {
    */
   async signIn({ email, password }) {
     // 1. Buscar usuario por email
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await prisma.user.findUnique({ 
+      where: { email },
+      include: { perfil: true }
+    });
 
     if (!user) {
       logger.warn('signIn — usuario no encontrado', { email });
@@ -33,14 +36,16 @@ class JwtAuthService {
     }
 
     // 3. Generar tokens
+    const rol = user.perfil ? user.perfil.rol : 'admin';
+    
     const accessToken = jwt.sign(
-      { id: user.id, email: user.email },
+      { id: user.id, email: user.email, rol },
       JWT_SECRET,
       { expiresIn: JWT_EXPIRES_IN }
     );
 
     const refreshToken = jwt.sign(
-      { id: user.id, email: user.email },
+      { id: user.id, email: user.email, rol },
       REFRESH_SECRET,
       { expiresIn: REFRESH_EXPIRES }
     );
@@ -48,7 +53,7 @@ class JwtAuthService {
     return {
       accessToken,
       refreshToken,
-      user: { id: user.id, email: user.email },
+      user: { id: user.id, email: user.email, rol },
     };
   }
 
@@ -61,19 +66,24 @@ class JwtAuthService {
       const payload = jwt.verify(refreshToken, REFRESH_SECRET);
 
       // Verificar que el usuario aún existe
-      const user = await prisma.user.findUnique({ where: { id: payload.id } });
+      const user = await prisma.user.findUnique({ 
+        where: { id: payload.id },
+        include: { perfil: true }
+      });
       if (!user) {
         throw new Error('Usuario no encontrado');
       }
 
+      const rol = user.perfil ? user.perfil.rol : 'admin';
+
       const newAccessToken = jwt.sign(
-        { id: user.id, email: user.email },
+        { id: user.id, email: user.email, rol },
         JWT_SECRET,
         { expiresIn: JWT_EXPIRES_IN }
       );
 
       const newRefreshToken = jwt.sign(
-        { id: user.id, email: user.email },
+        { id: user.id, email: user.email, rol },
         REFRESH_SECRET,
         { expiresIn: REFRESH_EXPIRES }
       );
@@ -81,7 +91,7 @@ class JwtAuthService {
       return {
         accessToken: newAccessToken,
         refreshToken: newRefreshToken,
-        user: { id: user.id, email: user.email },
+        user: { id: user.id, email: user.email, rol },
       };
     } catch (err) {
       logger.warn('refreshSession — token inválido o expirado');

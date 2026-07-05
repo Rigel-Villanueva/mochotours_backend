@@ -43,6 +43,7 @@ const AuthController    = require('./api/controllers/AuthController');
 const ContactInfoController = require('./api/controllers/ContactInfoController');
 const ProfileController     = require('./api/controllers/ProfileController');
 const ActivityController    = require('./api/controllers/ActivityController');
+const PagosController       = require('./api/controllers/PagosController');
 
 // ── Rutas ─────────────────────────────────────────────────────────────
 const makeGaleriaRoutes = require('./api/routes/galeriaRoutes');
@@ -55,6 +56,7 @@ const SiteContentController  = require('./api/controllers/SiteContentController'
 const makeSiteContentRoutes  = require('./api/routes/siteContentRoutes');
 
 const makeContactInfoRoutes = require('./api/routes/contactInfoRoutes');
+const makePagosRoutes       = require('./api/routes/pagosRoutes');
 
 // ── Middlewares globales ──────────────────────────────────────────────
 const requestLogger   = require('./api/middlewares/requestLogger');
@@ -75,7 +77,10 @@ function createApp() {
   app.use(helmet({
     crossOriginResourcePolicy: false,
   }));
-  const corsOrigins = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : '*';
+  let corsOrigins = '*';
+  if (process.env.CORS_ORIGIN && process.env.CORS_ORIGIN !== '*') {
+    corsOrigins = process.env.CORS_ORIGIN.split(',');
+  }
   app.use(cors({ origin: corsOrigins }));
   app.use(express.json());
   app.use(requestLogger);
@@ -177,6 +182,7 @@ function createApp() {
 
   const profileController  = new ProfileController();
   const activityController = new ActivityController();
+  const pagosController    = new PagosController();
 
   // ── Middlewares dinámicos (Inyectados) ─────────────────────────────
   const authMiddleware = makeAuthMiddleware(authService);
@@ -189,6 +195,7 @@ function createApp() {
   app.use('/api/site-content', makeSiteContentRoutes(siteContentController, authMiddleware));
   app.use('/api/contact-info', makeContactInfoRoutes(contactInfoController, authMiddleware));
   app.use('/api/admin/activity', makeActivityRoutes(activityController, authMiddleware));
+  app.use('/api/admin/pagos', makePagosRoutes(pagosController, authMiddleware));
 
   // Ruta de salud — útil para monitoreo y Docker healthcheck
   /**

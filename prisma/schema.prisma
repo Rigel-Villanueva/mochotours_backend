@@ -126,6 +126,7 @@ model Galeria {
 
 enum RolPerfil {
   admin
+  superadmin
 }
 
 model Perfil {
@@ -138,4 +139,13 @@ model Perfil {
   user       User      @relation(fields: [id], references: [id], onDelete: Cascade)
 
   @@map("perfiles")
+}
+
+model Pagos {
+  id         Int       @id @default(autoincrement())
+  fecha_pago DateTime? @db.Date
+  pagado     Boolean   @default(false)
+  created_at DateTime? @default(now()) @db.Timestamp(0)
+
+  @@map("pagos")
 }
